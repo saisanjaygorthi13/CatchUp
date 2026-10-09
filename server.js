@@ -64,13 +64,43 @@ function safeResolve(filePath) {
   return normalized;
 }
 
-async function analyzeWithGroq(text, userName) {
+const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b';
+
+async function discoverFallbackModel(apiKey) {
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data?.data)) return null;
+    const availableIds = data.data.map(m => m.id);
+    
+    // Ranked preference list of known high-quality Groq text-generation models
+    const preferences = [
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      'qwen/qwen3.8-27b',
+      'allam-2-7b',
+      'canopylabs/orpheus-v1-english'
+    ];
+    for (const pref of preferences) {
+      if (availableIds.includes(pref)) return pref;
+    }
+    const textModel = availableIds.find(id => !id.includes('whisper') && !id.includes('guard'));
+    return textModel || availableIds[0] || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+async function analyzeWithGroq(text, userName, overrideModel, isRetry = false) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     throw new Error('Missing GROQ_API_KEY in environment or .env file');
   }
 
-  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const model = overrideModel || process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL;
 
   const systemPrompt = `You are CatchUp, an expert conversation intelligence engine.
 Analyze the provided group chat log and extract what the user missed.
@@ -129,9 +159,35 @@ ${text}
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    const msg = payload?.error?.message || payload?.error || `HTTP ${response.status}`;
-    console.error(`[Groq] API error: ${msg}`);
-    throw new Error(msg);
+    const rawMsg = payload?.error?.message || payload?.error || `HTTP ${response.status}`;
+    const code = payload?.error?.code;
+
+    // Check if the requested model is not found or unavailable to account
+    const isModelUnavailable = response.status === 404 || code === 'model_not_found' || /does not exist|not have access|not found/i.test(rawMsg);
+    if (isModelUnavailable && !isRetry) {
+      console.warn(`[Groq] Model '${model}' is unavailable. Querying /openai/v1/models for supported replacement...`);
+      const discovered = await discoverFallbackModel(apiKey);
+      if (discovered && discovered !== model) {
+        console.log(`[Groq] Automatically switching to supported model '${discovered}' and retrying...`);
+        return analyzeWithGroq(text, userName, discovered, true);
+      }
+    }
+
+    let userFacingMsg = rawMsg;
+    if (response.status === 401 || code === 'invalid_api_key') {
+      userFacingMsg = `Authentication error (401): Invalid or expired GROQ_API_KEY. (${rawMsg})`;
+    } else if (response.status === 403 || code === 'permission_denied') {
+      userFacingMsg = `Permission error (403): Access denied to model '${model}'. (${rawMsg})`;
+    } else if (isModelUnavailable) {
+      userFacingMsg = `Model error (404): Model '${model}' does not exist or is unavailable on this Groq account. (${rawMsg})`;
+    } else if (response.status === 429 || code === 'rate_limit_exceeded') {
+      userFacingMsg = `Rate limit error (429): Groq rate limit exceeded. Please retry shortly. (${rawMsg})`;
+    } else if (response.status >= 500) {
+      userFacingMsg = `Groq server error (${response.status}): ${rawMsg}`;
+    }
+
+    console.error(`[Groq] API error (${response.status}): ${userFacingMsg}`);
+    throw new Error(userFacingMsg);
   }
 
   const data = await response.json();
@@ -222,7 +278,7 @@ function handleApiAnalyze(req, res) {
           }
 
           const charCount = text.length;
-          const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+          const model = process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL;
           console.log(`[API] /api/analyze — ${charCount} chars, user="${userName || '(none)'}"`);
           console.log(`[API] Calling Groq API (${model})…`);
 
