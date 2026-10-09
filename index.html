@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CatchUp — Your chats moved on. You shouldn't have to scroll back.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="theme-color" content="#0e0f12">
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- Left Navigation Sidebar -->
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+      </div>
+      <div class="brand-title-wrap">
+        <span class="brand-name">CatchUp</span>
+        <span class="brand-tagline">What did you miss?</span>
+      </div>
+    </div>
+
+    <div class="nav-group-title">Workspace</div>
+    <nav class="nav-menu" id="sidebarNav">
+      <!-- Injected dynamically by ui.js -->
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="privacy-badge-box">
+        <div class="privacy-badge-header">
+          <span class="privacy-dot"></span>
+          <span>Running locally</span>
+        </div>
+        <div class="privacy-badge-sub">
+          Your chats are processed on this device. Nothing is uploaded.
+        </div>
+        <button class="link-btn" id="btnPrivacyDetails">Privacy &amp; storage details</button>
+      </div>
+
+      <button class="btn btn-sm btn-danger" id="btnClearData">Purge conversation data</button>
+    </div>
+  </aside>
+
+  <!-- Main Workspace -->
+  <main class="main-workspace">
+    <div class="workspace-inner">
+
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="header-meta">
+          <h1>What did you miss?</h1>
+          <p>Your chats moved on. You shouldn't have to scroll back.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-sm btn-ghost" id="btnTheme" title="Toggle theme" aria-label="Toggle theme"></button>
+        </div>
+      </header>
+
+      <!-- Example Scenarios Selector -->
+      <section class="scenario-selector">
+        <span class="scenario-title">Try an example</span>
+        <div class="scenario-list" id="scenarioList">
+          <!-- Injected dynamically by app.js -->
+        </div>
+      </section>
+
+      <!-- Conversation Input Panel -->
+      <section class="ingest-card" id="ingestCard">
+        <div class="ingest-card-header">
+          <div class="ingest-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Paste a conversation</span>
+          </div>
+          <span class="ingest-hint">WhatsApp, Slack, Teams, Discord or plain logs</span>
+        </div>
+
+        <div class="textarea-wrap">
+          <textarea id="rawChat" placeholder="Paste the messages you missed&#10;[10/09/2026, 9:00 AM] Alice: Morning sync moved to 11 AM"></textarea>
+        </div>
+
+        <div class="ingest-bottom-bar">
+          <div class="ingest-actions-left">
+            <button class="btn btn-primary" id="btnProcess">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              <span>Process conversation</span>
+            </button>
+            <button class="btn" id="btnUpload">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Upload file</span>
+            </button>
+            <input type="file" id="fileInput" accept=".txt,.log,.csv,.json,text/plain" hidden>
+            <span class="drop-hint">or drop a file</span>
+          </div>
+
+          <div class="ingest-actions-right">
+            <div class="persona-box">
+              <span>I am</span>
+              <input type="text" class="input-persona" id="userIdentity" placeholder="e.g. Bob" title="Enter your name to highlight your assigned action items">
+            </div>
+          </div>
+        </div>
+
+        <!-- Alert Banner -->
+        <div class="alert-banner" id="alertBanner"></div>
+      </section>
+
+      <!-- Dynamic Output Area -->
+      <section id="outputArea">
+        <!-- Rendered by ui.js & app.js -->
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Slide-Out Evidence Inspector Drawer -->
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="evidence-drawer" id="evidenceDrawer"></aside>
+
+<!-- Settings & Privacy Modal -->
+<div class="modal-overlay" id="appModal"></div>
+
+<!-- Core Scripts in Order -->
+<script src="js/parser.js"></script>
+<script src="js/analyzer.js"></script>
+<script src="js/samples.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
